@@ -1,7 +1,11 @@
 from typing import List
 from reddit.archiver import Archiver
 from reddit.configuration import Configuration
-from reddit.bdfr.logger import make_console_logging_handler, silence_module_loggers, logger
+from reddit.bdfr.logger import (
+    make_console_logging_handler,
+    silence_module_loggers,
+    logger,
+)
 import requests
 import ray
 
@@ -22,32 +26,42 @@ def search_posts(config: Configuration):
         logger.info("Search complete")
         return posts
 
-def search_posts_raw(problem: str, subreddit: str = None, num_posts_to_include: int = 5):
+
+def search_posts_raw(
+    problem: str, subreddit: str = None, num_posts_to_include: int = 5
+):
     subreddit_extension = f"r/{subreddit}/" if subreddit is not None else ""
     posts = []
     try:
         response = requests.get(
             f"http://www.reddit.com/{subreddit_extension}search.json?q={problem}&limit={num_posts_to_include}&restrict_sr=on",
-            headers = {'User-agent': 'step-one bot 0.1'}
-        ).json()
-        raw_posts = response["data"]["children"]
+            headers={"User-agent": "step-one bot 0.1"},
+        )
+        print("printing response")
+        print(response)
+        response_json = response.json()
+        print(response_json)
+        raw_posts = response_json["data"]["children"]
         # print(posts)
         # print("\n\n\n")
         for raw_post in raw_posts:
-            posts.append({
-                # Add key to remove duplicates
-                "key": raw_post["data"]["author"] + raw_post["data"]["title"],
-                "title": raw_post["data"]["title"],
-                "subreddit": raw_post["data"]["subreddit"],
-                "selftext": raw_post["data"]["selftext"],
-                "permalink": raw_post["data"]["permalink"],
-            })
+            posts.append(
+                {
+                    # Add key to remove duplicates
+                    "key": raw_post["data"]["author"] + raw_post["data"]["title"],
+                    "title": raw_post["data"]["title"],
+                    "subreddit": raw_post["data"]["subreddit"],
+                    "selftext": raw_post["data"]["selftext"],
+                    "permalink": raw_post["data"]["permalink"],
+                }
+            )
     except Exception:
         logger.exception("search_posts_raw exited unexpectedly")
         raise
     else:
         logger.info("Search complete")
         return remove_duplicates(posts)
+
 
 def remove_duplicates(list: List[dict]):
     seen = set()
@@ -59,6 +73,7 @@ def remove_duplicates(list: List[dict]):
             result.append(item)
     return result
 
+
 def search_subreddits(need: str, user_groups: List[str] = []):
     subreddits = []
 
@@ -66,17 +81,19 @@ def search_subreddits(need: str, user_groups: List[str] = []):
         for user_group in user_groups:
             response = requests.get(
                 f"http://www.reddit.com/subreddits/search.json?q={user_group}&limit=5",
-                headers = {'User-agent': 'step-one bot 0.1'}
+                headers={"User-agent": "step-one bot 0.1"},
             ).json()
             raw_subreddits = response["data"]["children"]
             for raw_subreddit in raw_subreddits:
-                subreddits.append({
-                    "key": raw_subreddit["data"]["display_name"],
-                    "name": raw_subreddit["data"]["display_name"],
-                    "description": raw_subreddit["data"]["public_description"],
-                    "subscribers": raw_subreddit["data"]["subscribers"],
-                    "url": raw_subreddit["data"]["url"],
-                })
+                subreddits.append(
+                    {
+                        "key": raw_subreddit["data"]["display_name"],
+                        "name": raw_subreddit["data"]["display_name"],
+                        "description": raw_subreddit["data"]["public_description"],
+                        "subscribers": raw_subreddit["data"]["subscribers"],
+                        "url": raw_subreddit["data"]["url"],
+                    }
+                )
         subreddits = remove_duplicates(subreddits)
     except Exception:
         logger.exception("search_subreddits exited unexpectedly")
@@ -85,7 +102,8 @@ def search_subreddits(need: str, user_groups: List[str] = []):
         logger.info("Search complete")
         # return three most relevant subreddits
         return rank_subreddits(subreddits, need)[:6]
-    
+
+
 def rank_subreddits(subreddits, need):
     # Rank subreddits by how relevant they are to the need
     try:
