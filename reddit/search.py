@@ -42,6 +42,8 @@ def search_posts_raw(
         )
         print("printing response")
         print(response)
+        print(response.reason)
+        print(response.raw)
         response_json = response.json()
         # print(response_json)
         raw_posts = response_json["data"]["children"]
