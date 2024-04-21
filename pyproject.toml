@@ -8,14 +8,16 @@ packages = [{include = "step_one"}]
 
 [tool.poetry.dependencies]
 python = "^3.10"
-langchain = "^0.0.92"
-openai = "^0.26.5"
-tiktoken = "^0.2.0"
-ray = "^2.2.0"
+openai = "^1.21.2"
+tiktoken = "^0.6.0"
+ray = "2.11.0"
 praw = "^7.6.1"
 appdirs = "^1.4.4"
 streamlit = "^1.19.0"
-grpcio = "^1.48.2"
+grpcio = "^1.62.1"
+openpipe = "^4.9.0"
+instructor = "^1.2.1"
+pydantic = "^2.7.0"
 
 [tool.poetry.scripts]
 step-one = "step_one.find:find_posts"

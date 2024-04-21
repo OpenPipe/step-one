@@ -1,233 +1,193 @@
-from langchain.prompts import PromptTemplate
-from langchain.llms import OpenAI
+from openpipe import OpenAI
 from typing import List
 import ray
-import json
-import os
-import requests
-import string
+import instructor
+from pydantic import BaseModel
 
-def call_chatgpt(prompt_messages: List[str]):
-    messages = [{"role": "user", "content": message} for message in prompt_messages]
-    data = {"model": "gpt-3.5-turbo", "messages": messages, "temperature": 0}
-    headers = {"Authorization": "Bearer " + os.environ["OPENAI_API_KEY"], "Content-Type": "application/json"}
-    response = requests.post("https://api.openai.com/v1/chat/completions", data=json.dumps(data), headers=headers)
-    try:
-        return response.json()["choices"][0]["message"]["content"]
-    except:
-        print("Error: " + response.json())
-        return None
+client = instructor.from_openai(OpenAI())
 
 
-curie_llm = OpenAI(model_name="text-curie-001", temperature=0)
-davinci_llm = OpenAI(model_name="text-davinci-003", temperature=0)
+class RestatedNeed(BaseModel):
+    restated_need: str
 
-generate_user_group_prompt = PromptTemplate(
-    input_variables=["problem"],
-    template="""List 7 user groups who have the following problem and a short reason why they have it. Below the list, list the top 3 groups who have the problem the most in the following syntax: ["user group 1", "user group 2", "user group 3"], and mark the array with the label "3 most:".
 
-Problem: {problem}
-
-User groups:""",
-)
-
-restate_need_prompt = PromptTemplate(
-    input_variables=["need"],
-    template="""
+def restate_need(need) -> str:
+    completion = client.chat.completions.create(
+        model="gpt-4-0613",
+        messages=[
+            {"role": "system", "content": "You are a helpful AI assistant."},
+            {
+                "role": "user",
+                "content": f"""
 Pretend you have the following need. State that need concisely in a single sentence from your perspective. The first word should be "I".
 
 Need: {need}
+""",
+            },
+        ],
+        response_model=RestatedNeed,
+    )
 
-Restated:
-"""
-)
+    return completion.restated_need
 
-def restate_need(need):
-    formatted_restate_need_prompt = restate_need_prompt.format(need=need)
-    full_answer = call_chatgpt(["You are a helpful AI assistant.", formatted_restate_need_prompt])
-    return full_answer.strip(' "\'\t\r\n')
+
+class GeneratedUserGroups(BaseModel):
+    top_3_user_groups: List[str]
+
 
 def generate_user_groups(need) -> List[str]:
-    formatted_generate_user_group_prompt = generate_user_group_prompt.format(problem=need)
-    # full_answer = davinci_llm(formatted_generate_user_group_prompt)
-    full_answer = call_chatgpt(["You are a helpful AI assistant.", formatted_generate_user_group_prompt])
+    completion = client.chat.completions.create(
+        model="gpt-4-0613",
+        messages=[
+            {"role": "system", "content": "You are a helpful AI assistant."},
+            {
+                "role": "user",
+                "content": """
+                List 7 user groups who have the following problem and a short reason why they have it.
+                Then, list the top 3 groups who have the problem the most.
+                """,
+            },
+            {"role": "user", "content": f"Problem: {need}"},
+        ],
+        response_model=GeneratedUserGroups,
+    )
+    return completion.top_3_user_groups
 
-    print(full_answer)
 
-    answer_chunks = full_answer.lower().split("3 most:")
-    if len(answer_chunks) < 2:
-        # If the answer is not formatted correctly, return empty array
-        return []
-    stripped_answer = answer_chunks[1].strip(' "\'\t\r\n')
+class SummarizedPost(BaseModel):
+    summary: str
 
-    try:
-        return json.loads(stripped_answer)
-    except:
-        return [stripped_answer, None, None]
 
-summarize_post_prompt = PromptTemplate(
-    input_variables=["title", "selftext", "need"],
-    template="""Here is a reddit post I am interested in:
-
-title: {title}
-
-contents: {selftext}
-
-Who is this person? What are they asking for? How does this post relate to the following need?
-
-Need: {need}
-
-Summary:""",
-)
-
-def summarize(post, need):
+def summarize(post, need) -> str:
     try:
         post_content = post["selftext"] or "No content"
-        formatted_summarize_post_prompt = summarize_post_prompt.format(
-            title=post["title"],
-            selftext=post_content,
-            need=need
+        if len(post_content) > 8000:
+            post_content = post_content[:8000]
+        completion = client.chat.completions.create(
+            model="gpt-4-0613",
+            messages=[
+                {"role": "system", "content": "You are a helpful AI assistant."},
+                {
+                    "role": "user",
+                    "content": f"""
+                        Here is a reddit post I am interested in:
+                        title: {post["title"]}
+                        contents: {post_content}
+                        Who is this person? What are they asking for? How does this post relate to the following need?
+                        Need: {need}
+                    """,
+                },
+            ],
+            response_model=SummarizedPost,
         )
-        return call_chatgpt(["You are a helpful AI assistant.", formatted_summarize_post_prompt]).strip()
-        # return curie_llm(formatted_summarize_post_prompt).strip()
+        return completion.summary.strip()
     except:
-        try:
-            # If it failed because the post was too long, truncate it and try again.
-            if len(post_content) > 4000:
-                post_content = post_content[:4000]
-                formatted_summarize_post_prompt = summarize_post_prompt.format(
-                    title=post["title"],
-                    selftext=post_content
-                )
-                return call_chatgpt(["You are a helpful AI assistant.", formatted_summarize_post_prompt]).strip()
-        except:
-            return None
-    
+        return None
 
-discern_applicability_prompt = PromptTemplate(
-    input_variables=["title", "content", "need"],
-    template="""
-Here is the title and content of a reddit post I am interested in:
 
-title: {title}
-content: {content}
+class DiscernApplicabilityResult(BaseModel):
+    applicable: bool
+    explanation: str
 
-Does the person writing this post explicitly mention that they have the following need? {need}
 
-Explain your reasoning before you answer, then answer \"true\" or \"false\" in a separate paragraph. Answer true if the person has the need, or false otherwise. Label your true/false answer with \"Answer:\".""" ,
-)
-
-def discern_applicability(post, need):
+def discern_applicability(post, need) -> bool:
     post_content = post["selftext"] or "No content"
-    formatted_discern_applicability_prompt = discern_applicability_prompt.format(
-        title=post["title"],
-        content=post_content,
-        need=need
-    )
+    if len(post_content) > 8000:
+        post_content = post_content[:8000]
+
     try:
-        full_answer = call_chatgpt(["You are a helpful AI assistant.", formatted_discern_applicability_prompt]).strip()
+        completion = client.chat.completions.create(
+            model="gpt-4-0613",
+            messages=[
+                {"role": "system", "content": "You are a helpful AI assistant."},
+                {
+                    "role": "user",
+                    "content": f"""
+                        Here is the title and content of a reddit post I am interested in:
+                        title: {post["title"]}
+                        content: {post_content}
+
+                        Does the person writing this post explicitly mention that they have the following need?
+                        {need}
+
+                        Explain your reasoning before you answer. Answer true if the person has the need, or false otherwise. Label your true/false answer with "Answer:".
+                    """,
+                },
+            ],
+            response_model=DiscernApplicabilityResult,
+        )
+
+        return completion.applicable
+
     except:
-        try:
-            # If it failed because the post was too long, truncate it and try again.
-            if len(post_content) > 4000:
-                post_content = post_content[:4000]
-                formatted_discern_applicability_prompt = discern_applicability_prompt.format(
-                    title=post["title"],
-                    content=post_content,
-                    need=need
-                )
-                full_answer = call_chatgpt(["You are a helpful AI assistant.", formatted_discern_applicability_prompt]).strip()
-        except:
-            return False
-    # full_answer = davinci_llm(formatted_discern_applicability_prompt).strip()
-    post["full_answer"] = full_answer
-    answer_chunks = full_answer.lower().split("answer:")
-    if len(answer_chunks) < 2:
-        # If the answer is not formatted correctly, return False
         return False
-    answer = answer_chunks[1].strip()
-    # print(answer)
-    return len(answer) >= 4 and answer[0:4] == "true"
 
-score_post_relevance_prompt = PromptTemplate(
-    input_variables=["title", "summary", "need"],
-    template="""
-Here is the title and summary of a reddit post I am interested in:
 
-title: {title}
-summary: {summary}
+class PostRelevanceScore(BaseModel):
+    relevance_score: int
 
-On a scale of 1 to 10, how likely is it that the person writing this post has the following need? If you are not sure, make your best guess, or answer 1.
 
-Need: {need}
-
-Explain your reasoning before you answer, then answer one integer between 1 and 10 in a separate paragraph. Label your integer answer with \"Answer:\".""" ,
-)
-
-def score_post_relevance(post, need):
-    formatted_score_post_relevance_prompt = score_post_relevance_prompt.format(
-        title=post["title"],
-        summary=post["summary"],
-        need=need
-    )
-    full_answer = call_chatgpt(["You are a helpful AI assistant.", formatted_score_post_relevance_prompt]).strip()
-    
+def score_post_relevance(post, need) -> int:
     try:
-        answer_relevance_string = full_answer.lower().split("answer:")[1].strip().translate(str.maketrans('', '', string.punctuation))
+        completion = client.chat.completions.create(
+            model="gpt-4-0613",
+            messages=[
+                {"role": "system", "content": "You are a helpful AI assistant."},
+                {
+                    "role": "user",
+                    "content": f"""
+                        Here is the title and summary of a reddit post I am interested in:
+                        title: {post["title"]}
+                        summary: {post["summary"]}
+
+                        On a scale of 1 to 10, how likely is it that the person writing this post has the following need? If you are not sure, make your best guess, or answer 1.
+                        Need: {need}
+
+                        Answer one integer between 1 and 10.
+                    """,
+                },
+            ],
+            response_model=PostRelevanceScore,
+        )
+
+        return completion.relevance_score
+
     except:
-        print("\n\n")
-        print("full_answer", full_answer)
         return 1
-    answer_relevance = 1
-    try:
-        answer_relevance = int(answer_relevance_string)
-    except:
-        print("\n\n")
-        print(f"answer_relevance_string `{answer_relevance_string}`")
-        return 1
-    print("answer_relevance", answer_relevance)
-    return answer_relevance
 
-score_subreddit_relevance_prompt = PromptTemplate(
-    input_variables=["subreddit", "subreddit_description", "need"],
-    template="""
-Here is a subreddit I am interested in:
-{subreddit}
 
-Here is the description of the subreddit:
-{subreddit_description}
+class SubredditRelevanceScore(BaseModel):
+    relevance_score: int
 
-Please answer the following question. If you are not sure, answer 1:
-
-On a scale of 1 to 10, how likely is it than anyone in this subreddit has the following need? {need}
-
-Explain your reasoning before you answer, then answer one integer between 1 and 10 in a separate paragraph. Label your integer answer with \"Answer:\".""" ,
-)
 
 @ray.remote
 def score_subreddit_relevance(subreddit, need):
-    formatted_score_subreddit_relevance_prompt = score_subreddit_relevance_prompt.format(
-        subreddit=subreddit["name"],
-        subreddit_description=subreddit["description"],
-        need=need
+    formatted_score_subreddit_relevance_prompt = f"""
+Here is a subreddit I am interested in: {subreddit["name"]}
+Here is the description of the subreddit: {subreddit["description"]}
+
+Please answer the following question. If you are not sure, answer 1:
+On a scale of 1 to 10, how likely is it that anyone in this subreddit has the following need?
+
+Need: {need}
+
+Answer one integer between 1 and 10.
+"""
+
+    response = client.chat.completions.create(
+        model="gpt-3.5-turbo",
+        messages=[
+            {"role": "system", "content": "You are a helpful AI assistant."},
+            {"role": "user", "content": formatted_score_subreddit_relevance_prompt},
+        ],
+        response_model=SubredditRelevanceScore,
     )
-    full_answer = call_chatgpt(["You are a helpful AI assistant.", formatted_score_subreddit_relevance_prompt]).strip()
-    # full_answer = davinci_llm(formatted_score_subreddit_relevance_prompt).strip()
+
+    relevance_score = response.relevance_score
+
     print(subreddit["name"])
     print(subreddit["description"])
-    print(full_answer)
-    try:
-        answer_relevance_string = full_answer.lower().split("answer:")[1].strip().translate(str.maketrans('', '', string.punctuation))
-    except:
-        print("\n\n")
-        print("full_answer", full_answer)
-        subreddit["score"] = 1
-        return subreddit
-    print(answer_relevance_string)
-    answer_relevance = 0
-    try:
-        answer_relevance = int(answer_relevance_string)
-    except:
-        pass
-    subreddit["score"] = answer_relevance
+    print(relevance_score)
+
+    subreddit["score"] = relevance_score
     return subreddit
