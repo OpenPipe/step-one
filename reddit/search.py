@@ -33,17 +33,17 @@ def search_posts_raw(
     subreddit_extension = f"r/{subreddit}/" if subreddit is not None else ""
     posts = []
     print(
-        f"http://www.reddit.com/{subreddit_extension}search.json?q={problem}&limit={num_posts_to_include}&restrict_sr=on"
+        f"https://www.reddit.com/{subreddit_extension}search.json?q={problem}&limit={num_posts_to_include}&restrict_sr=on"
     )
     try:
         response = requests.get(
-            f"http://www.reddit.com/{subreddit_extension}search.json?q={problem}&limit={num_posts_to_include}&restrict_sr=on",
+            f"https://www.reddit.com/{subreddit_extension}search.json?q={problem}&limit={num_posts_to_include}&restrict_sr=on",
             headers={"User-agent": "step-one bot 0.1"},
         )
         print("printing response")
         print(response)
         response_json = response.json()
-        print(response_json)
+        # print(response_json)
         raw_posts = response_json["data"]["children"]
         # print(posts)
         # print("\n\n\n")
