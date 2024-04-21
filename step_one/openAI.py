@@ -2,7 +2,6 @@ from openpipe import OpenAI
 from typing import List
 import ray
 import json
-import string
 
 client = OpenAI()
 
@@ -48,6 +47,11 @@ Need: {need}
             "function": {
                 "name": "restate_need",
             },
+        },
+        openpipe={
+            "tags": {
+                "prompt_id": "restate_need",
+            }
         },
     )
 
@@ -118,6 +122,11 @@ List 7 user groups who have the following problem and a short reason why they ha
                 "name": "generate_user_groups",
             },
         },
+        openpipe={
+            "tags": {
+                "prompt_id": "generate_user_groups",
+            }
+        },
     )
 
     user_groups = json.loads(
@@ -183,6 +192,11 @@ def summarize(post, need):
                     "name": "summarize",
                 },
             },
+            openpipe={
+                "tags": {
+                    "prompt_id": "summarize",
+                }
+            },
         )
         return json.loads(
             completion.choices[0].message.tool_calls[0].function.arguments
@@ -212,6 +226,11 @@ def summarize(post, need):
                         "function": {
                             "name": "summarize",
                         },
+                    },
+                    openpipe={
+                        "tags": {
+                            "prompt_id": "summarize",
+                        }
                     },
                 )
                 return json.loads(
@@ -280,6 +299,11 @@ def discern_applicability(post, need):
                     "name": "discern_applicability",
                 },
             },
+            openpipe={
+                "tags": {
+                    "prompt_id": "discern_applicability",
+                }
+            },
         )
         applicability = json.loads(
             completion.choices[0].message.tool_calls[0].function.arguments
@@ -300,6 +324,11 @@ def discern_applicability(post, need):
                         "function": {
                             "name": "discern_applicability",
                         },
+                    },
+                    openpipe={
+                        "tags": {
+                            "prompt_id": "discern_applicability",
+                        }
                     },
                 )
                 applicability = json.loads(
@@ -361,6 +390,11 @@ Answer one integer between 1 and 10.
                 "name": "score_post_relevance",
             },
         },
+        openpipe={
+            "tags": {
+                "prompt_id": "score_post_relevance",
+            }
+        },
     )
 
     answer_relevance = json.loads(
@@ -421,6 +455,11 @@ Answer one integer between 1 and 10.
             "function": {
                 "name": "score_subreddit_relevance",
             },
+        },
+        openpipe={
+            "tags": {
+                "prompt_id": "score_subreddit_relevance",
+            }
         },
     )
 
