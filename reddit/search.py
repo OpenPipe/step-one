@@ -41,6 +41,9 @@ def search_posts_raw(
 
         proxy_url = f"http://{os.getenv('PROXY_USER')}:{os.getenv('PROXY_PASS')}@{os.getenv('PROXY_HOST')}:{os.getenv('PROXY_PORT')}"
 
+        print("printing proxy_url")
+        print(proxy_url)
+
         proxies = {"http": proxy_url, "https": proxy_url}
 
         search_url = f"http://www.reddit.com/{subreddit_extension}search.json?q={problem}&limit={num_posts_to_include}&restrict_sr=on"
