@@ -14,6 +14,13 @@ import os
 from step_one.openAI import score_subreddit_relevance
 
 
+proxy_url = f"http://{os.getenv('PROXY_USER')}:{os.getenv('PROXY_PASS')}@{os.getenv('PROXY_HOST')}:{os.getenv('PROXY_PORT')}"
+proxies = {"http": proxy_url, "https": proxy_url}
+
+print("printing proxy_url")
+print(proxy_url)
+
+
 def search_posts(config: Configuration):
     silence_module_loggers()
     stream = make_console_logging_handler(config.verbose)
@@ -38,13 +45,6 @@ def search_posts_raw(
         f"https://www.reddit.com/{subreddit_extension}search.json?q={problem}&limit={num_posts_to_include}&restrict_sr=on"
     )
     try:
-
-        proxy_url = f"http://{os.getenv('PROXY_USER')}:{os.getenv('PROXY_PASS')}@{os.getenv('PROXY_HOST')}:{os.getenv('PROXY_PORT')}"
-
-        print("printing proxy_url")
-        print(proxy_url)
-
-        proxies = {"http": proxy_url, "https": proxy_url}
 
         search_url = f"http://www.reddit.com/{subreddit_extension}search.json?q={problem}&limit={num_posts_to_include}&restrict_sr=on"
 
@@ -102,6 +102,7 @@ def search_subreddits(need: str, user_groups: List[str] = []):
             response = requests.get(
                 f"http://www.reddit.com/subreddits/search.json?q={user_group}&limit=5",
                 headers={"User-agent": "step-one bot 0.1"},
+                proxies=proxies,
             ).json()
             raw_subreddits = response["data"]["children"]
             for raw_subreddit in raw_subreddits:
