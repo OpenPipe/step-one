@@ -28,43 +28,54 @@ generate_random_need_tools = [
 
 
 def generate_random_need():
-    completion = client.chat.completions.create(
-        model="gpt-3.5-turbo-1106",
-        messages=[
-            {
-                "role": "system",
-                "content": "You are a helpful AI assistant who generates random user needs.",
-            },
-            {
-                "role": "user",
-                "content": """Generate a random need that a normal person might have.
+    generated_need = None
+    num_attempts = 0
 
-The need should be something that a person might want to solve, like "I need to find a new job" or "I need to learn how to cook."
-                
-The need should be something that can be solved by a new app or software product.
+    while (generated_need is None or len(generated_need) < 1) and num_attempts < 3:
+        try:
+            completion = client.chat.completions.create(
+                model="gpt-4-0125-preview",
+                messages=[
+                    {
+                        "role": "system",
+                        "content": "You are a helpful AI assistant who generates user needs.",
+                    },
+                    {
+                        "role": "user",
+                        "content": """Generate a need that a normal person might have.
 
-Now generate a new need.""",
-            },
-        ],
-        tools=generate_random_need_tools,
-        tool_choice={
-            "type": "function",
-            "function": {
-                "name": "generate_need",
-            },
-        },
-        openpipe={
-            "tags": {
-                "prompt_id": "generate_need",
-            }
-        },
-    )
+        The need should be something that a person might want to solve, like "I need to find a new job" or "I need to learn how to cook."
+                        
+        The need should be something that can be solved by a new app or software product.
 
-    print(completion.choices[0].message.tool_calls[0].function)
+        Now generate a new need.""",
+                    },
+                ],
+                tools=generate_random_need_tools,
+                tool_choice={
+                    "type": "function",
+                    "function": {
+                        "name": "generate_need",
+                    },
+                },
+                openpipe={
+                    "tags": {
+                        "prompt_id": "generate_need",
+                    }
+                },
+            )
 
-    return json.loads(completion.choices[0].message.tool_calls[0].function.arguments)[
-        "generated_need"
-    ]
+            print(completion.choices[0].message.tool_calls[0].function)
+
+            generated_need = json.loads(
+                completion.choices[0].message.tool_calls[0].function.arguments
+            )["generated_need"].strip()
+            print("generated need: ", generated_need)
+        except:
+            num_attempts += 1
+            pass
+
+    return generated_need
 
 
 generate_user_groups_tools = [
@@ -108,37 +119,46 @@ generate_user_groups_tools = [
 
 
 def generate_user_groups(need) -> List[str]:
-    completion = client.chat.completions.create(
-        model="gpt-4-0613",
-        messages=[
-            {"role": "system", "content": "You are a helpful AI assistant."},
-            {
-                "role": "user",
-                "content": """
-List 7 user groups who have the following problem and a short reason why they have it. Then, list the top 3 groups who have the problem the most.""",
-            },
-            {
-                "role": "user",
-                "content": f"Problem: {need}",
-            },
-        ],
-        tools=generate_user_groups_tools,
-        tool_choice={
-            "type": "function",
-            "function": {
-                "name": "generate_user_groups",
-            },
-        },
-        openpipe={
-            "tags": {
-                "prompt_id": "generate_user_groups",
-            },
-        },
-    )
+    user_groups = None
+    num_attempts = 0
 
-    user_groups = json.loads(
-        completion.choices[0].message.tool_calls[0].function.arguments
-    )["top_3_user_groups"]
+    while user_groups is None and num_attempts < 3:
+        try:
+            completion = client.chat.completions.create(
+                model="gpt-3.5-turbo-1106",
+                messages=[
+                    {"role": "system", "content": "You are a helpful AI assistant."},
+                    {
+                        "role": "user",
+                        "content": """
+        List 7 user groups who have the following problem and a short reason why they have it. Then, list the top 3 groups who have the problem the most.""",
+                    },
+                    {
+                        "role": "user",
+                        "content": f"Problem: {need}",
+                    },
+                ],
+                tools=generate_user_groups_tools,
+                tool_choice={
+                    "type": "function",
+                    "function": {
+                        "name": "generate_user_groups",
+                    },
+                },
+                openpipe={
+                    "tags": {
+                        "prompt_id": "generate_user_groups",
+                    },
+                },
+            )
+            print(completion.choices[0].message.tool_calls[0].function)
+
+            user_groups = json.loads(
+                completion.choices[0].message.tool_calls[0].function.arguments
+            )["top_3_user_groups"]
+        except:
+            num_attempts += 1
+            pass
 
     return user_groups
 
@@ -259,11 +279,12 @@ Explain your reasoning before you answer. Answer true if the person has the need
     ]
 
 
-def discern_applicability(post, need, use_fine_tuned=False):
+def discern_applicability(post, need, use_fine_tuned=False, openai_api_key=None):
     post_content = post["selftext"][:16000] or "No content"
     try:
-        completion = client.chat.completions.create(
-            model="gpt-4-0613",
+        applicability_client = OpenAI(api_key=openai_api_key)
+        completion = applicability_client.chat.completions.create(
+            model="openpipe:discern-llama-3" if use_fine_tuned else "gpt-4-0613",
             messages=format_discern_applicability_messages(
                 post["title"], post_content, need
             ),

@@ -13,9 +13,10 @@ import os
 
 from step_one.openAI import score_subreddit_relevance
 
+use_proxy = os.getenv("USE_PROXY") == "true"
 
 proxy_url = f"http://{os.getenv('PROXY_USER')}:{os.getenv('PROXY_PASS')}@{os.getenv('PROXY_HOST')}:{os.getenv('PROXY_PORT')}"
-proxies = {"http": proxy_url, "https": proxy_url}
+proxies = {"http": proxy_url, "https": proxy_url} if use_proxy else None
 
 # print("printing proxy_url")
 # print(proxy_url)
