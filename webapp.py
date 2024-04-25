@@ -20,22 +20,20 @@ st.title("Step One")
 st.write("Step One is a tool that helps you find your first users on reddit.")
 
 with st.sidebar:
-    st.write("To use the OpenAI API, set the OPENAI_API_KEY environment variable.")
-    st.write(
-        "If you don't have an API key, you can still use the fine-tuned models, but the results may not be as good."
-    )
+    st.write("To use the OpenAI API, provide your api key.")
     openai_api_key = st.text_input(
         "OpenAI API Key",
         key="openai_api_key",
         label_visibility="visible",
         placeholder="sk-...",
         type="password",
-        value=os.environ.get("PUBLIC_OPENAI_API_KEY"),
+        value=os.environ.get("DEFAULT_OPENAI_API_KEY"),
+    )
+    st.write(
+        "If you don't have an API key, you can still use the fine-tuned models (the results are better anyway)."
     )
     available_modes = (
-        ("OpenAI", "Fine-tuned models")
-        if openai_api_key != ""
-        else ("Fine-tuned models",)
+        ("OpenAI", "Fine-tuned models") if openai_api_key else ("Fine-tuned models",)
     )
     mode = st.radio("Select mode", available_modes)
 
