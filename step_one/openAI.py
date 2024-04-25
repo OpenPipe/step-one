@@ -4,10 +4,7 @@ import ray
 import json
 import os
 
-client = OpenAI(
-    api_key=os.getenv("OPENPIPE_API_KEY"),
-    base_url="http://localhost:3000/api/v1/",
-)
+client = OpenAI()
 
 generate_random_need_tools = [
     {
@@ -110,7 +107,7 @@ generate_user_groups_tools = [
 ]
 
 
-def generate_user_groups(need, caching_enabled=False) -> List[str]:
+def generate_user_groups(need) -> List[str]:
     completion = client.chat.completions.create(
         model="gpt-4-0613",
         messages=[
@@ -137,7 +134,6 @@ List 7 user groups who have the following problem and a short reason why they ha
                 "prompt_id": "generate_user_groups",
             },
         },
-        extra_headers={"op-cache": "true" if caching_enabled else "false"},
     )
 
     user_groups = json.loads(
@@ -182,7 +178,7 @@ Need: {need}
 """
 
 
-def summarize(post, need, use_fine_tuned=False, caching_enabled=False):
+def summarize(post, need, use_fine_tuned=False):
     post_content = post["selftext"][:16000] or "No content"
     try:
         completion = client.chat.completions.create(
@@ -208,7 +204,6 @@ def summarize(post, need, use_fine_tuned=False, caching_enabled=False):
                     "prompt_id": "summarize",
                 },
             },
-            extra_headers={"op-cache": "true" if caching_enabled else "false"},
         )
     except:
         return None
@@ -264,7 +259,7 @@ Explain your reasoning before you answer. Answer true if the person has the need
     ]
 
 
-def discern_applicability(post, need, use_fine_tuned=False, caching_enabled=False):
+def discern_applicability(post, need, use_fine_tuned=False):
     post_content = post["selftext"][:16000] or "No content"
     try:
         completion = client.chat.completions.create(
@@ -284,7 +279,6 @@ def discern_applicability(post, need, use_fine_tuned=False, caching_enabled=Fals
                     "prompt_id": "discern_applicability",
                 },
             },
-            extra_headers={"op-cache": "true" if caching_enabled else "false"},
         )
         applicability = json.loads(
             completion.choices[0].message.tool_calls[0].function.arguments
@@ -319,7 +313,7 @@ score_post_relevance_tools = [
 ]
 
 
-def score_post_relevance(post, need, use_fine_tuned=False, caching_enabled=False):
+def score_post_relevance(post, need, use_fine_tuned=False):
     formatted_score_post_relevance_prompt = f"""
 Here is the title and summary of a reddit post I am interested in:
 title: {post["title"]}
@@ -350,7 +344,6 @@ Answer one integer between 1 and 10.
                 "prompt_id": "score_post_relevance",
             },
         },
-        extra_headers={"op-cache": "true" if caching_enabled else "false"},
     )
 
     answer_relevance = json.loads(
@@ -384,9 +377,7 @@ score_subreddit_relevance_tools = [
 
 
 @ray.remote
-def score_subreddit_relevance(
-    subreddit, need, use_fine_tuned=False, caching_enabled=False
-):
+def score_subreddit_relevance(subreddit, need, use_fine_tuned=False):
     client = OpenAI()
 
     formatted_score_subreddit_relevance_prompt = f"""
@@ -419,7 +410,6 @@ Answer one integer between 1 and 10.
                 "prompt_id": "score_subreddit_relevance",
             },
         },
-        extra_headers={"op-cache": "true" if caching_enabled else "false"},
     )
 
     # load into json
