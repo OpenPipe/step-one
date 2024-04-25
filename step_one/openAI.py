@@ -27,7 +27,7 @@ generate_random_need_tools = [
 ]
 
 
-def generate_random_need():
+def generate_random_need(wonky=False):
     generated_need = None
     num_attempts = 0
 
@@ -42,11 +42,11 @@ def generate_random_need():
                     },
                     {
                         "role": "user",
-                        "content": """Generate a need that a normal person might have.
+                        "content": f"""Generate a need that a normal person might have.
 
         The need should be something that a person might want to solve, like "I need to find a new job" or "I need to learn how to cook."
                         
-        The need should be something that can be solved by a new app or software product.
+        The need should be something that can be solved by a new app or software product. {"It should be kind of wonky and funny." if wonky else ""}
 
         Now generate a new need.""",
                     },
@@ -198,11 +198,12 @@ Need: {need}
 """
 
 
-def summarize(post, need, use_fine_tuned=False):
+def summarize(post, need, use_fine_tuned=False, openai_api_key=None):
     post_content = post["selftext"][:16000] or "No content"
     try:
-        completion = client.chat.completions.create(
-            model="gpt-4-0613",
+        summarize_client = OpenAI(api_key=openai_api_key)
+        completion = summarize_client.chat.completions.create(
+            model="openpipe:summarize-llama-3" if use_fine_tuned else "gpt-4-0613",
             messages=[
                 {"role": "system", "content": "You are a helpful AI assistant."},
                 {

@@ -35,7 +35,7 @@ def filter_by_need(posts, need, use_fine_tuned=False, openai_api_key=None):
 def has_need(post, need, use_fine_tuned=False, openai_api_key=None):
     if discern_applicability(post, need, use_fine_tuned, openai_api_key):
         # Summarize the post on behalf of the user.
-        post["summary"] = summarize(post, need, use_fine_tuned)
+        post["summary"] = summarize(post, need, use_fine_tuned, openai_api_key)
         post["score"] = score_post_relevance(post, need, use_fine_tuned)
         return post
     return None

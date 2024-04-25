@@ -9,8 +9,12 @@ INITIAL_NEED = "Forming new habits is hard"
 
 
 # Allow the user to quickly see responses for different needs
-def randomize_activity():
-    st.session_state["need"] = generate_random_need()
+def feeling_lucky():
+    st.session_state["need"] = generate_random_need(wonky=True)
+
+
+def serious_need():
+    st.session_state["need"] = generate_random_need(wonky=False)
 
 
 if "need" not in st.session_state:
@@ -42,18 +46,22 @@ with st.sidebar:
 
 @st.cache_data
 def get_posts(need, use_fine_tuned=False):
+    if need.strip() == "":
+        return []
     return find_posts(need, st.write, use_fine_tuned, openai_api_key)
 
 
-need = st.text_input(
+need = st.text_area(
     "Problem statement",
     key="need",
     label_visibility="visible",
     placeholder=INITIAL_NEED,
 )
 
-randomize_need_button = st.button(
-    "Randomize need", on_click=randomize_activity, type="secondary"
+col1, col2, col3 = st.columns([1, 2, 3])
+serious_need_button = col1.button("Real need", on_click=serious_need, type="primary")
+feeling_lucky_button = col2.button(
+    "I'm feeling lucky", on_click=feeling_lucky, type="secondary"
 )
 
 st.header("Results")
