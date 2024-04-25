@@ -22,7 +22,7 @@ for i in range(len(keyphrases)):
     keyphrases[i] = keyphrases[i].lower()
 
 
-def find_posts(need: str = DEFAULT_NEED, log=print):
+def find_posts(need: str = DEFAULT_NEED, log=print, use_fine_tuned=False):
     # need_from_user_perspective = restate_need(need)
     # log("restated need:", need_from_user_perspective)
 
@@ -81,7 +81,7 @@ def find_posts(need: str = DEFAULT_NEED, log=print):
 
     # second_round_posts = search_subreddits(config, definite_question)
 
-    posts = filter_by_need(first_round_posts, need)
+    posts = filter_by_need(first_round_posts, need, use_fine_tuned)
     log(f"Found {len(posts)} posts after filtering by need.")
 
     for post in posts:

@@ -17,10 +17,14 @@ if "need" not in st.session_state:
 
 st.title("Step One")
 
+mode = st.radio("Select mode", ("OpenAI", "Fine-tuned models"))
+
+caching_enabled = st.checkbox("Enable caching")
+
 
 @st.cache_data
-def get_posts(need):
-    return find_posts(need, st.write)
+def get_posts(need, use_fine_tuned=False):
+    return find_posts(need, st.write, use_fine_tuned)
 
 
 need = st.text_input(
@@ -35,7 +39,7 @@ st.header("Results")
 
 # Explain that we are generating the results if we haven't already
 st.write("Finding matching posts...")
-posts = get_posts(need)
+posts = get_posts(need, use_fine_tuned=mode == "Fine-tuned models")
 st.write(f"Found {len(posts)} matching posts:")
 
 

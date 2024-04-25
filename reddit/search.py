@@ -17,8 +17,8 @@ from step_one.openAI import score_subreddit_relevance
 proxy_url = f"http://{os.getenv('PROXY_USER')}:{os.getenv('PROXY_PASS')}@{os.getenv('PROXY_HOST')}:{os.getenv('PROXY_PORT')}"
 proxies = {"http": proxy_url, "https": proxy_url}
 
-print("printing proxy_url")
-print(proxy_url)
+# print("printing proxy_url")
+# print(proxy_url)
 
 
 def search_posts(config: Configuration):

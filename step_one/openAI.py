@@ -177,7 +177,7 @@ Need: {need}
 """
 
 
-def summarize(post, need):
+def summarize(post, need, use_fine_tuned=False):
     try:
         post_content = post["selftext"] or "No content"
         completion = client.chat.completions.create(
@@ -293,7 +293,7 @@ Explain your reasoning before you answer. Answer true if the person has the need
     ]
 
 
-def discern_applicability(post, need):
+def discern_applicability(post, need, use_fine_tuned=False):
     post_content = post["selftext"] or "No content"
     try:
         completion = client.chat.completions.create(
@@ -373,7 +373,7 @@ score_post_relevance_tools = [
 ]
 
 
-def score_post_relevance(post, need):
+def score_post_relevance(post, need, use_fine_tuned=False):
     formatted_score_post_relevance_prompt = f"""
 Here is the title and summary of a reddit post I am interested in:
 title: {post["title"]}
@@ -437,7 +437,7 @@ score_subreddit_relevance_tools = [
 
 
 @ray.remote
-def score_subreddit_relevance(subreddit, need):
+def score_subreddit_relevance(subreddit, need, use_fine_tuned=False):
     client = OpenAI()
 
     formatted_score_subreddit_relevance_prompt = f"""
