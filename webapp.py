@@ -42,6 +42,7 @@ with st.sidebar:
     mode = st.radio("Select mode", available_modes)
 
     st.write("Link to project and models: https://app.openpipe.ai/p/ft1b4KYFoq")
+    st.write("Link to GitHub: https://github.com/openpipe/step-one")
 
 
 @st.cache_data
