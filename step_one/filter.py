@@ -18,12 +18,12 @@ def filter_by_keyphrase(posts, keyphrases):
     return filtered_posts
 
 
-def filter_by_need(posts, need, use_fine_tuned=False):
+def filter_by_need(posts, need, use_fine_tuned=False, caching_enabled=False):
     try:
         ray.init()
         results = []
         for post in posts:
-            results.append(has_need.remote(post, need, use_fine_tuned))
+            results.append(has_need.remote(post, need, use_fine_tuned, caching_enabled))
         output = ray.get(results)
         filtered_posts = [post for post in output if post]
     finally:
@@ -32,11 +32,13 @@ def filter_by_need(posts, need, use_fine_tuned=False):
 
 
 @ray.remote
-def has_need(post, need, use_fine_tuned=False):
-    if discern_applicability(post, need, use_fine_tuned):
+def has_need(post, need, use_fine_tuned=False, caching_enabled=False):
+    if discern_applicability(post, need, use_fine_tuned, caching_enabled):
         # Summarize the post on behalf of the user.
-        post["summary"] = summarize(post, need, use_fine_tuned)
-        post["score"] = score_post_relevance(post, need, use_fine_tuned)
+        post["summary"] = summarize(post, need, use_fine_tuned, caching_enabled)
+        post["score"] = score_post_relevance(
+            post, need, use_fine_tuned, caching_enabled
+        )
         return post
     return None
 

@@ -22,11 +22,14 @@ for i in range(len(keyphrases)):
     keyphrases[i] = keyphrases[i].lower()
 
 
-def find_posts(need: str = DEFAULT_NEED, log=print, use_fine_tuned=False):
+def find_posts(
+    need: str = DEFAULT_NEED, log=print, use_fine_tuned=False, caching_enabled=False
+):
     # need_from_user_perspective = restate_need(need)
     # log("restated need:", need_from_user_perspective)
 
-    user_groups = generate_user_groups(need)
+    user_groups = generate_user_groups(need=need, caching_enabled=caching_enabled)
+
     log("searching for reddits used by the following user groups:")
     for user_group in user_groups:
         log(user_group)
@@ -81,7 +84,7 @@ def find_posts(need: str = DEFAULT_NEED, log=print, use_fine_tuned=False):
 
     # second_round_posts = search_subreddits(config, definite_question)
 
-    posts = filter_by_need(first_round_posts, need, use_fine_tuned)
+    posts = filter_by_need(first_round_posts, need, use_fine_tuned, caching_enabled)
     log(f"Found {len(posts)} posts after filtering by need.")
 
     for post in posts:

@@ -2,8 +2,12 @@ from openpipe import OpenAI
 from typing import List
 import ray
 import json
+import os
 
-client = OpenAI()
+client = OpenAI(
+    api_key=os.getenv("OPENPIPE_API_KEY"),
+    base_url="http://localhost:3000/api/v1/",
+)
 
 generate_random_need_tools = [
     {
@@ -106,7 +110,7 @@ generate_user_groups_tools = [
 ]
 
 
-def generate_user_groups(need) -> List[str]:
+def generate_user_groups(need, caching_enabled=False) -> List[str]:
     completion = client.chat.completions.create(
         model="gpt-4-0613",
         messages=[
@@ -131,8 +135,9 @@ List 7 user groups who have the following problem and a short reason why they ha
         openpipe={
             "tags": {
                 "prompt_id": "generate_user_groups",
-            }
+            },
         },
+        extra_headers={"op-cache": "true" if caching_enabled else "false"},
     )
 
     user_groups = json.loads(
@@ -177,9 +182,9 @@ Need: {need}
 """
 
 
-def summarize(post, need, use_fine_tuned=False):
+def summarize(post, need, use_fine_tuned=False, caching_enabled=False):
+    post_content = post["selftext"][:16000] or "No content"
     try:
-        post_content = post["selftext"] or "No content"
         completion = client.chat.completions.create(
             model="gpt-4-0613",
             messages=[
@@ -201,49 +206,15 @@ def summarize(post, need, use_fine_tuned=False):
             openpipe={
                 "tags": {
                     "prompt_id": "summarize",
-                }
+                },
             },
+            extra_headers={"op-cache": "true" if caching_enabled else "false"},
         )
-        return json.loads(
-            completion.choices[0].message.tool_calls[0].function.arguments
-        )["summary"].strip()
     except:
-        try:
-            # If it failed because the post was too long, truncate it and try again.
-            if len(post_content) > 4000:
-                post_content = post_content[:4000]
-                completion = client.chat.completions.create(
-                    model="gpt-4-0613",
-                    messages=[
-                        {
-                            "role": "system",
-                            "content": "You are a helpful AI assistant.",
-                        },
-                        {
-                            "role": "user",
-                            "content": generate_summarize_message(
-                                title=post["title"], content=post_content, need=need
-                            ),
-                        },
-                    ],
-                    tools=summarize_tools,
-                    tool_choice={
-                        "type": "function",
-                        "function": {
-                            "name": "summarize",
-                        },
-                    },
-                    openpipe={
-                        "tags": {
-                            "prompt_id": "summarize",
-                        }
-                    },
-                )
-                return json.loads(
-                    completion.choices[0].message.tool_calls[0].function.arguments
-                )["summary"].strip()
-        except:
-            return None
+        return None
+    return json.loads(completion.choices[0].message.tool_calls[0].function.arguments)[
+        "summary"
+    ].strip()
 
 
 discern_applicability_tools = [
@@ -293,8 +264,8 @@ Explain your reasoning before you answer. Answer true if the person has the need
     ]
 
 
-def discern_applicability(post, need, use_fine_tuned=False):
-    post_content = post["selftext"] or "No content"
+def discern_applicability(post, need, use_fine_tuned=False, caching_enabled=False):
+    post_content = post["selftext"][:16000] or "No content"
     try:
         completion = client.chat.completions.create(
             model="gpt-4-0613",
@@ -311,40 +282,15 @@ def discern_applicability(post, need, use_fine_tuned=False):
             openpipe={
                 "tags": {
                     "prompt_id": "discern_applicability",
-                }
+                },
             },
+            extra_headers={"op-cache": "true" if caching_enabled else "false"},
         )
         applicability = json.loads(
             completion.choices[0].message.tool_calls[0].function.arguments
         )
     except:
-        try:
-            # If it failed because the post was too long, truncate it and try again.
-            if len(post_content) > 4000:
-                post_content = post_content[:4000]
-                completion = client.chat.completions.create(
-                    model="gpt-4-0613",
-                    messages=format_discern_applicability_messages(
-                        post["title"], post_content, need
-                    ),
-                    tools=discern_applicability_tools,
-                    tool_choice={
-                        "type": "function",
-                        "function": {
-                            "name": "discern_applicability",
-                        },
-                    },
-                    openpipe={
-                        "tags": {
-                            "prompt_id": "discern_applicability",
-                        }
-                    },
-                )
-                applicability = json.loads(
-                    completion.choices[0].message.tool_calls[0].function.arguments
-                )
-        except:
-            return False
+        return False
     # full_answer = davinci_llm(formatted_discern_applicability_prompt).strip()
     post["full_answer"] = applicability["explanation"]
     return applicability["applicable"]
@@ -373,7 +319,7 @@ score_post_relevance_tools = [
 ]
 
 
-def score_post_relevance(post, need, use_fine_tuned=False):
+def score_post_relevance(post, need, use_fine_tuned=False, caching_enabled=False):
     formatted_score_post_relevance_prompt = f"""
 Here is the title and summary of a reddit post I am interested in:
 title: {post["title"]}
@@ -402,8 +348,9 @@ Answer one integer between 1 and 10.
         openpipe={
             "tags": {
                 "prompt_id": "score_post_relevance",
-            }
+            },
         },
+        extra_headers={"op-cache": "true" if caching_enabled else "false"},
     )
 
     answer_relevance = json.loads(
@@ -437,7 +384,9 @@ score_subreddit_relevance_tools = [
 
 
 @ray.remote
-def score_subreddit_relevance(subreddit, need, use_fine_tuned=False):
+def score_subreddit_relevance(
+    subreddit, need, use_fine_tuned=False, caching_enabled=False
+):
     client = OpenAI()
 
     formatted_score_subreddit_relevance_prompt = f"""
@@ -468,8 +417,9 @@ Answer one integer between 1 and 10.
         openpipe={
             "tags": {
                 "prompt_id": "score_subreddit_relevance",
-            }
+            },
         },
+        extra_headers={"op-cache": "true" if caching_enabled else "false"},
     )
 
     # load into json
