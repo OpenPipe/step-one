@@ -5,58 +5,64 @@ import json
 
 client = OpenAI()
 
-
-restate_need_tools = [
+generate_random_need_tools = [
     {
         "type": "function",
         "function": {
-            "name": "restate_need",
-            "description": "Restate the need in a single sentence from your perspective.",
+            "name": "generate_need",
+            "description": "Generate a random need that a normal person might have.",
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "restated_need": {
+                    "generated_need": {
                         "type": "string",
-                        "description": "The restated need.",
+                        "description": "The generated need.",
                     },
                 },
-                "required": ["restated_need"],
+                "required": ["generated_need"],
             },
         },
     }
 ]
 
 
-def restate_need(need):
+def generate_random_need():
     completion = client.chat.completions.create(
-        model="gpt-4-0613",
+        model="gpt-3.5-turbo-1106",
         messages=[
-            {"role": "system", "content": "You are a helpful AI assistant."},
+            {
+                "role": "system",
+                "content": "You are a helpful AI assistant who generates random user needs.",
+            },
             {
                 "role": "user",
-                "content": f"""
-Pretend you have the following need. State that need concisely in a single sentence from your perspective. The first word should be "I".
+                "content": """Generate a random need that a normal person might have.
 
-Need: {need}
-""",
+The need should be something that a person might want to solve, like "I need to find a new job" or "I need to learn how to cook."
+                
+The need should be something that can be solved by a new app or software product.
+
+Now generate a new need.""",
             },
         ],
-        tools=restate_need_tools,
+        tools=generate_random_need_tools,
         tool_choice={
             "type": "function",
             "function": {
-                "name": "restate_need",
+                "name": "generate_need",
             },
         },
         openpipe={
             "tags": {
-                "prompt_id": "restate_need",
+                "prompt_id": "generate_need",
             }
         },
     )
 
+    print(completion.choices[0].message.tool_calls[0].function)
+
     return json.loads(completion.choices[0].message.tool_calls[0].function.arguments)[
-        "restated_need"
+        "generated_need"
     ]
 
 
@@ -251,7 +257,7 @@ discern_applicability_tools = [
                 "properties": {
                     "explanation": {
                         "type": "string",
-                        "description": "The explanation for whether the person has the need or not.",
+                        "description": "A short explanation of why the person has the need or not.",
                     },
                     "applicable": {
                         "type": "boolean",
@@ -267,18 +273,21 @@ discern_applicability_tools = [
 
 def format_discern_applicability_messages(title, content, need):
     return [
-        {"role": "system", "content": "You are a helpful AI assistant."},
+        {
+            "role": "system",
+            "content": f"""You are a helpful and reliable AI assistant who evaluates reddit posts. Does the person writing the following post explicitly mention that they have the following need? 
+            
+            {need}
+""",
+        },
         {
             "role": "user",
-            "content": f"""
-Here is the title and content of a reddit post I am interested in:
+            "content": f"""This is the post:
 
 title: {title}
 content: {content}
 
-Does the person writing this post explicitly mention that they have the following need? {need}
-
-Explain your reasoning before you answer. Answer true if the person has the need, or false otherwise. Label your true/false answer with \"Answer:\".
+Explain your reasoning before you answer. Answer true if the person has the need, or false otherwise.
 """,
         },
     ]
@@ -370,7 +379,7 @@ Here is the title and summary of a reddit post I am interested in:
 title: {post["title"]}
 summary: {post["summary"]}
 
-On a scale of 1 to 10, how likely is it that the person writing this post has the following need? If you are not sure, make your best guess, or answer 1.
+Does the person who write this post have the following need and would buy a product made by someone else to solve it? If yes, answer 10. If no, answer 1. If you are unsure, answer 5.
 
 Need: {need}
 
