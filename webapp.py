@@ -5,7 +5,7 @@ import streamlit as st
 import os
 
 
-INITIAL_NEED = "Forming new habits is hard"
+INITIAL_NEED = "Forming new habits is hard "
 
 
 # Allow the user to quickly see responses for different needs
