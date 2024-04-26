@@ -23,6 +23,10 @@ if "need" not in st.session_state:
 st.title("Step One")
 st.write("Step One is a tool that helps you find your first users on reddit.")
 
+st.write(
+    "WARNING: Reddit is touchy about web scraping, and likes to throw 403s when too many people use this app at once."
+)
+
 with st.sidebar:
     st.write("To use the OpenAI API, provide your api key.")
     openai_api_key = st.text_input(
